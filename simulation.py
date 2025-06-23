@@ -146,16 +146,13 @@ class MainWindow(QWidget):
             self.grid.randomize()
             self.count_label.setText(f"実行回数: {self.grid.counter_num}")
             
-            # 平均計算用に実行回数を加算
             self.average_count += self.grid.counter_num
             
-            # テーブルに新しい行を追加
             self.resultsTable.insertRow(self.resultsTable.rowCount())
             row = self.resultsTable.rowCount() - 1
             self.resultsTable.setItem(row, 0, QTableWidgetItem(str(self.push_count)))
             self.resultsTable.setItem(row, 1, QTableWidgetItem("1000000回以上かかる" if (self.grid.counter_num == 1000000) else str(self.grid.counter_num)))
             
-            # 平均回数ラベルを更新
             average_value = int(self.average_count / self.push_count)
             self.average_label.setText(f"回数平均: {average_value}回")
 
