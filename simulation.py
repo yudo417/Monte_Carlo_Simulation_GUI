@@ -2,7 +2,7 @@ import sys
 import numpy as np
 from PyQt5.QtWidgets import (
     QApplication, QWidget, QPushButton,
-    QHBoxLayout, QVBoxLayout, QLabel
+    QHBoxLayout, QVBoxLayout, QLabel,QTableWidget,QHeaderView,QTableWidgetItem
 )
 from PyQt5.QtGui import QPainter, QPen, QBrush
 from PyQt5.QtCore import Qt, QPointF
@@ -14,6 +14,7 @@ class ArrowGridWidget(QWidget):
         self.rows = rows
         self.cols = cols
         self.counter_num = 0
+        self.tolerance = 10
         self.angles = np.random.rand(self.rows, self.cols) * 360
         self.angles = self.angles.astype(int)
         
@@ -25,7 +26,7 @@ class ArrowGridWidget(QWidget):
         check_angle = self.angles[0, 0]
         for i in range(self.rows):
             for j in range(self.cols):
-                if np.abs(check_angle - self.angles[i,j]) > 10:
+                if np.abs(check_angle - self.angles[i,j]) > self.tolerance:
                     is_equal = False
         return is_equal
     
@@ -117,7 +118,9 @@ class MainWindow(QWidget):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("モンテカルロ・シミュレーションGUI")
-        self.resize(600, 500)
+        self.resize(1000, 500)
+        self.push_count = 0
+        self.average_count = 0
 
         h_layout = QHBoxLayout(self)
 
@@ -125,22 +128,64 @@ class MainWindow(QWidget):
         h_layout.addWidget(self.grid, stretch=1)
 
         vbox = QVBoxLayout()
+
+        self.tolerance_label = QLabel(f"許容誤差: {self.grid.tolerance}")
+        self.tolerance_label.setStyleSheet("font-size: 16px;")
         
         self.count_num = 0
         self.count_label = QLabel(f"実行回数: {self.count_num}")
+        self.count_label.setStyleSheet("font-size: 24px;font-weight: bold;")
         self.grid.set_counter_num(self.count_num)
+
+        self.caption_label = QLabel("※時間がかかる場合があり\n1000000回を上限とします．")
+        self.caption_label.setStyleSheet("font-size: 12px;color:gray;")
         
         # ボタン押して再実行
         def update_counter():
+            self.push_count += 1
             self.grid.randomize()
             self.count_label.setText(f"実行回数: {self.grid.counter_num}")
-        
+            
+            # 平均計算用に実行回数を加算
+            self.average_count += self.grid.counter_num
+            
+            # テーブルに新しい行を追加
+            self.resultsTable.insertRow(self.resultsTable.rowCount())
+            row = self.resultsTable.rowCount() - 1
+            self.resultsTable.setItem(row, 0, QTableWidgetItem(str(self.push_count)))
+            self.resultsTable.setItem(row, 1, QTableWidgetItem("1000000回以上かかる" if (self.grid.counter_num == 1000000) else str(self.grid.counter_num)))
+            
+            # 平均回数ラベルを更新
+            average_value = int(self.average_count / self.push_count)
+            self.average_label.setText(f"回数平均: {average_value}回")
+
         btn = QPushButton("ランダムに再配置")
         btn.clicked.connect(update_counter)
         
+        result_vbox = QVBoxLayout()
+        self.resultsTable = QTableWidget(0, 2)
+        self.resultsTable.setHorizontalHeaderLabels(['回数', '実行回数'])
+        self.resultsTable.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)
+        self.resultsTable.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
+        self.resultsTable.verticalHeader().setVisible(False)
+        
+        self.average_label = QLabel(f"回数平均: {"--回" if self.push_count == 0 else int(self.average_count / self.push_count)}")
+        self.average_label.setStyleSheet("font-size: 18px;font-weight: bold;color: #2E8B57;")  
+
+
+        
+        vbox.addStretch()
+        vbox.addWidget(self.tolerance_label)
         vbox.addWidget(self.count_label)
+        vbox.addWidget(self.caption_label)
+        vbox.addStretch()
         vbox.addWidget(btn)
         h_layout.addLayout(vbox)
+        result_vbox.addWidget(self.resultsTable)
+        result_vbox.addWidget(self.average_label)
+        h_layout.addLayout(result_vbox)
+
+
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
